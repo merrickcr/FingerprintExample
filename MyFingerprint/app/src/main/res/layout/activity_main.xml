@@ -17,10 +17,19 @@
         android:layout_centerInParent="true"/>
 
     <TextView
-        android:layout_below="@id/fp_icon"
+            android:layout_below="@id/fp_icon"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerHorizontal="true"
+            android:id="@+id/error_textview"
+            android:text="" />
+
+    <TextView
+        android:layout_below="@id/error_textview"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_centerHorizontal="true"
+        android:paddingTop="25dp"
         android:id="@+id/textview"
         android:text="Hello World!" />
 </RelativeLayout>

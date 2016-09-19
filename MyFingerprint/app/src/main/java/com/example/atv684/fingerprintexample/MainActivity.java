@@ -1,21 +1,21 @@
 package com.example.atv684.fingerprintexample;
 
 import android.Manifest;
-import android.content.Context;
 import android.content.pm.PackageManager;
 import android.hardware.fingerprint.FingerprintManager;
 import android.os.CancellationSignal;
+import android.os.Handler;
 import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyPermanentlyInvalidatedException;
 import android.security.keystore.KeyProperties;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.util.AttributeSet;
 import android.util.Base64;
 import android.util.Log;
-import android.view.View;
 import android.widget.TextView;
+
+import org.w3c.dom.Text;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -48,13 +48,15 @@ public class MainActivity extends AppCompatActivity {
 
     String FINGERPRINT_KEY_ALIAS = "FINGERPRINT_KEY";
 
-    String dataToEncrypt = "DATA TO ENCRYPT/DECRYPT";
+    String cipherResult = "DATA TO ENCRYPT/DECRYPT";
 
     byte[] ivSpec;
 
     private boolean shouldEncrypt = true;
 
     TextView textView;
+
+    TextView errorTextView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -63,11 +65,21 @@ public class MainActivity extends AppCompatActivity {
 
         textView = (TextView) findViewById(R.id.textview);
 
-        dataToEncrypt = textView.getText().toString();
+        errorTextView = (TextView) findViewById(R.id.error_textview);
+
+        cipherResult = textView.getText().toString();
 
     }
 
 
+    @Override
+    protected void onPause() {
+        super.onPause();
+
+        if(cancellationSignal.isCanceled() == false) {
+            cancellationSignal.cancel();
+        }
+    }
 
     @Override
     protected void onResume() {
@@ -188,11 +200,15 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onAuthenticationError(int errorCode, CharSequence errString) {
             super.onAuthenticationError(errorCode, errString);
+
+            errorTextView.setText(errString);
         }
 
         @Override
         public void onAuthenticationHelp(int helpCode, CharSequence helpString) {
             super.onAuthenticationHelp(helpCode, helpString);
+
+            errorTextView.setText(helpString);
         }
 
         @Override
@@ -201,26 +217,37 @@ public class MainActivity extends AppCompatActivity {
 
             Cipher cipher = result.getCryptoObject().getCipher();
 
+            errorTextView.setText("");
+
             try {
 
-                //toggle between encryption/decryption but setting IV on encryption
+                //toggle between encryption/decryption and set IV on encryption
                 if(shouldEncrypt){
-                    byte[] data = cipher.doFinal(dataToEncrypt.getBytes());
+                    byte[] data = cipher.doFinal(cipherResult.getBytes());
                     ivSpec = cipher.getIV();
-                    dataToEncrypt = Base64.encodeToString(data, Base64.NO_WRAP);
+                    cipherResult = Base64.encodeToString(data, Base64.NO_WRAP);
                     shouldEncrypt = false;
                 }
                 else{
-                    byte[] data = cipher.doFinal(Base64.decode(dataToEncrypt.getBytes(), Base64.NO_WRAP));
-                    dataToEncrypt = new String(data, "UTF-8");
+                    byte[] data = cipher.doFinal(Base64.decode(cipherResult.getBytes(), Base64.NO_WRAP));
+                    cipherResult = new String(data, "UTF-8");
                     shouldEncrypt = true;
                 }
 
-                Log.e("TAG", dataToEncrypt);
+                Log.e("TAG", cipherResult);
 
-                textView.setText(dataToEncrypt);
+                textView.setText(cipherResult);
 
-                startListening();
+                //add a delay so we don't spam the scanner
+                new Handler().postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        startListening();
+                    }
+                }, 200);
+
+                //or enable listening immediately
+                //startListening();
             } catch (IllegalBlockSizeException | UnsupportedEncodingException |
                     BadPaddingException e) {
                 e.printStackTrace();
@@ -230,6 +257,8 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onAuthenticationFailed() {
             super.onAuthenticationFailed();
+
+            errorTextView.setText("Fingerprint not authorized!");
         }
 
     };
